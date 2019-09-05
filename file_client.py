@@ -8,6 +8,7 @@ import hashlib
 import json
 
 
+
 def get_file_md5(file_path):
     m = hashlib.md5()
 
@@ -15,9 +16,9 @@ def get_file_md5(file_path):
         while True:
             data = f.read(1024)
             if len(data) == 0:
-                break
+                break    
             m.update(data)
-
+    
     return m.hexdigest().upper()
 
 
@@ -69,24 +70,21 @@ sock.connect((server_ip, server_port))
 def md5_passeord():
     m = hashlib.md5()
     m.update("kangkang123".encode())
-    pawd = m.hexdigest().upper()
+    pawd =  m.hexdigest().upper()
     return pawd
-
-
 md5_passeord()
 
-
 def user_client__reg_thread():
-    f = {
-        "op": 2,
-        "args":
-            {
-                "uname": "kangkang",
-                "passwd": "%s" % md5_passeord(),  # 真实密码的MD5值，使用大写表示
-                "phone": "15871137690",  # 手机号
-                "email": "904311392@qq.com"  # 邮箱
-            }
-    }
+    f =  {
+	"op": 2,
+	"args":
+		{
+			"uname": "kangkang",
+			"passwd": "%s"%md5_passeord(),   # 真实密码的MD5值，使用大写表示
+			"phone": "15871137690",  # 手机号
+			"email": "904311392@qq.com"  # 邮箱
+		}
+}
 
     f = json.dumps(f).encode()
     print(f)
@@ -111,20 +109,20 @@ def user_client__reg_thread():
             req = json.loads(json_data)
             if req['error_code'] == 1:
                 print('注册失败')
-                return 1
-            else:
+                return  1
+            else :
                 print('注册成功')
                 return 0
 
 
 def login_requests():
-    f = {
-        "op": 1,
-        "args":
-            {
-                "uname": "kangkang",
-                "passwd": "%s" % md5_passeord()  # 真实密码的MD5值，使用大写表示
-            }
+    f ={
+	"op": 1,
+	"args":
+		{
+			"uname": "kangkang",
+			"passwd": "%s"%md5_passeord()  # 真实密码的MD5值，使用大写表示
+		}
     }
     f = json.dumps(f).encode()
     file_len = "{:<15}".format(len(f)).encode()
@@ -155,13 +153,13 @@ def login_requests():
 
 def commd_request():
     f = {
-        "op": 3,
-        "args":
-            {
-                "uname": "kangkang"
-            }
-    }
-    f = json.dumps(f).encode()
+	"op": 3,
+	"args":
+		{
+			"uname": "kangkang"
+		}
+        }
+    f =json.dumps(f).encode()
     file_len = "{:<15}".format(len(f)).encode()
     sock.send(file_len)
     sock.send(f)
@@ -189,8 +187,7 @@ def commd_request():
             print("用户不存在")
             return 1
 
-
-def main():
+def main ():
     while True:
         print("1.注册信息")
         print("2.登录信息")
@@ -215,8 +212,11 @@ def main():
             else:
                 print("用户不存在请注册")
 
+
     while True:
         file_path = sock.recv(300).decode().rstrip()
+        print(file_path)
+        
         if len(file_path) == 0:
             break
 
@@ -235,35 +235,58 @@ def main():
             os.makedirs(file_path, exist_ok=True)
             continue
 
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        str1 = ""
+        str  = str1.join(file_path)
+        str2 = str.find("/")
 
-        print("\n正在接收文件 %s，请稍候......" % file_path)
+        if  not str2 == -1:
 
-        f = open(file_path, "wb")
 
-        recv_size = 0
-        while recv_size < file_size:
-            file_data = sock.recv(file_size - recv_size)
-            if len(file_data) == 0:
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+            print("\n正在接收文件 %s，请稍候......" % file_path)
+
+            f = open(file_path, "wb")
+
+            recv_size = 0
+            while recv_size < file_size:
+                file_data = sock.recv(file_size - recv_size)
+                if len(file_data) == 0:
+                    break
+
+                f.write(file_data)
+                recv_size += len(file_data)
+                print("\r拷贝进度为:%.2f%%" % (recv_size * 100 / file_size), end="")
+                if recv_size >= file_size:
+                    break
+            f.close()
+
+        else :
+
+            received_size = 0
+            f = open(file_path, "wb")
+            while received_size < file_size:
+                data = sock.recv(file_size - received_size)
+                if len(data) == 0:
+                    break
+
+                f.write(data)
+                received_size += len(data)
+                print("已接收:", received_size)
+            f.close()
+            print("receive done", file_size, " ", received_size)
+
+
+
+            recv_file_md5 = get_file_md5(file_path)
+
+            if recv_file_md5 == file_md5:
+                print("成功接收文件 %s" % file_path)
+            else:
+                print("接收文件 %s 失败（MD5校验不通过）" % file_path)
                 break
-
-            f.write(file_data)
-            recv_size += len(file_data)
-            print("\r拷贝进度为:%.2f%%" % (recv_size * 100 / file_size), end="")
-            if recv_size >= file_size:
-                break
-        f.close()
-
-        recv_file_md5 = get_file_md5(file_path)
-
-        if recv_file_md5 == file_md5:
-            print("成功接收文件 %s" % file_path)
-        else:
-            print("接收文件 %s 失败（MD5校验不通过）" % file_path)
-            break
 
     sock.close()
-
 
 if __name__ == '__main__':
     main()
